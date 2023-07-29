@@ -3,7 +3,6 @@ package utilapi
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -37,18 +36,16 @@ func GetWeather(location string) (WeatherApiResponseWeatherData, error) {
 	}
 
 	if response.StatusCode != 200 {
-		var errorResponse map[string]string
+		var errorResponse map[string]any
 		json.Unmarshal(responseData, &errorResponse)
-		return WeatherApiResponseWeatherData{}, errors.New(errorResponse["message"])
+		return WeatherApiResponseWeatherData{}, errors.New(errorResponse["message"].(string))
 	}
 
 	var responseObject WeatherApiResponseWeatherData
 	err = njson.Unmarshal(responseData, &responseObject)
 	if err != nil {
-		fmt.Println("error", err)
 		return WeatherApiResponseWeatherData{}, err
 	}
-	fmt.Println("response", responseObject)
 
 	return responseObject, nil
 }
