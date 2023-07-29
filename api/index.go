@@ -1,45 +1,42 @@
-package handler
+package main
 
 import (
-	"fmt"
 	"net/http"
 
-	. "github.com/tbxark/g4vercel"
+	"github.com/gin-gonic/gin"
 )
 
-func Handler(w http.ResponseWriter, r *http.Request) {
-	server := New()
+type todo struct {
+	ID        string `json:"id"`
+	Item      string `json:"item"`
+	Completed bool   `json:"completed"`
+}
 
-	server.GET("/", func(context *Context) {
-		context.JSON(200, H{
-			"message": "hello go from vercel !!!!",
-		})
-	})
-	server.GET("/hello", func(context *Context) {
-		name := context.Query("name")
-		if name == "" {
-			context.JSON(400, H{
-				"message": "name not found",
-			})
-		} else {
-			context.JSON(200, H{
-				"data": fmt.Sprintf("Hello %s!", name),
-			})
-		}
-	})
-	server.GET("/user/:id", func(context *Context) {
-		context.JSON(400, H{
-			"data": H{
-				"id": context.Param("id"),
-			},
-		})
-	})
-	server.GET("/long/long/long/path/*test", func(context *Context) {
-		context.JSON(200, H{
-			"data": H{
-				"url": context.Path,
-			},
-		})
-	})
-	server.Handle(w, r)
+var todos = []todo{
+	{ID: "1", Item: "Clean Room", Completed: false},
+	{ID: "2", Item: "Read Book", Completed: false},
+	{ID: "3", Item: "Record Video", Completed: false},
+}
+
+func getTodos(context *gin.Context) {
+	context.IndentedJSON(http.StatusOK, todos)
+}
+
+func addTodos(context *gin.Context) {
+	var newTodo todo
+
+	if err := context.BindJSON(&newTodo); err != nil {
+		return
+	}
+
+	todos = append(todos, newTodo)
+
+	context.IndentedJSON(http.StatusCreated, newTodo)
+}
+
+func main() {
+	router := gin.Default()
+	router.GET("/todos", getTodos)
+	router.POST("/todos", addTodos)
+	router.Run("localhost:9090")
 }
