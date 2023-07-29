@@ -18,14 +18,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	server := gin.Default()
 
 	server.GET("/get-weather", func(ctx *gin.Context) {
-		data, err := weatherController.GetWeather(ctx)
+		data, err, isInvalidResponse, invalidResponse := weatherController.GetWeather(ctx)
 		if err != nil {
 			errorData := entity.WeatherError{
 				Status:  404,
-				Message: "Location not set",
+				Message: err.Error(),
 				Example: "/get-weather?location=udupi",
 			}
 			ctx.JSON(404, errorData)
+		} else if isInvalidResponse {
+			ctx.JSON(404, invalidResponse)
 		} else {
 			ctx.JSON(200, data)
 		}

@@ -1,11 +1,10 @@
 package utilapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
-	"os"
 
 	"github.com/m7shapan/njson"
 )
@@ -24,21 +23,31 @@ type WeatherApiResponseWeatherData struct {
 	Visibility          int     `njson:"visibility"`
 }
 
-func GetWeather(location string) WeatherApiResponseWeatherData {
+func GetWeather(location string) (WeatherApiResponseWeatherData, error, bool, any) {
 	response, err := http.Get("https://api.openweathermap.org/data/2.5/weather?&appid=e07a248e19b7bc76072304519cc9e7ff&units=metric&q=" + location)
 
 	if err != nil {
-		fmt.Print(err.Error())
-		os.Exit(1)
+		return WeatherApiResponseWeatherData{}, err, false, nil
 	}
 
 	responseData, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Fatal(err)
+		return WeatherApiResponseWeatherData{}, err, false, nil
+	}
+
+	if response.StatusCode != 200 {
+		var errorResponse any
+		json.Unmarshal(responseData, &errorResponse)
+		return WeatherApiResponseWeatherData{}, nil, true, errorResponse
 	}
 
 	var responseObject WeatherApiResponseWeatherData
-	njson.Unmarshal(responseData, &responseObject)
+	err = njson.Unmarshal(responseData, &responseObject)
+	if err != nil {
+		fmt.Println("error", err)
+		return WeatherApiResponseWeatherData{}, err, false, nil
+	}
+	fmt.Println("response", responseObject)
 
-	return responseObject
+	return responseObject, nil, false, nil
 }

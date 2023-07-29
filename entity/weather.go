@@ -16,6 +16,6 @@ type Weather struct {
 
 type WeatherError struct {
 	Status  int    `json:"status"`
-	Message string `json:"location"`
-	Example string `json:"eample"`
+	Message string `json:"message"`
+	Example string `json:"example"`
 }

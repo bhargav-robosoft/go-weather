@@ -9,7 +9,7 @@ import (
 )
 
 type WeatherController interface {
-	GetWeather(ctx *gin.Context) (entity.Weather, error)
+	GetWeather(ctx *gin.Context) (entity.Weather, error, bool, any)
 }
 
 type controller struct {
@@ -22,12 +22,25 @@ func New(service service.WeatherService) WeatherController {
 	}
 }
 
-func (controller *controller) GetWeather(ctx *gin.Context) (weather entity.Weather, err error) {
+func (controller *controller) GetWeather(ctx *gin.Context) (entity.Weather, error, bool, any) {
 	params := ctx.Request.URL.Query()
+
 	if !params.Has("location") {
-		return weather, errors.New("No location")
+		return entity.Weather{}, errors.New("No location"), false, nil
 	}
+
 	location := params["location"][0]
 
-	return controller.service.GetWeather(location), nil
+	if len(location) == 0 {
+		return entity.Weather{}, errors.New("Empty location"), false, nil
+	}
+
+	data, err, isInvalidResponse, invalidResponse := controller.service.GetWeather(location)
+	if err != nil {
+		return entity.Weather{}, err, false, nil
+	} else if isInvalidResponse {
+		return entity.Weather{}, err, true, invalidResponse
+	}
+
+	return data, nil, false, nil
 }
