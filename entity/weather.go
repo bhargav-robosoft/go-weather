@@ -1,17 +1,17 @@
 package entity
 
 type Weather struct {
-	Name            string `json:"name"`
-	CountryName     string `json:"country-name"`
-	Temperature     string `json:"temperature"`
-	Description     string `json:"description"`
-	WeatherIconLink string `json:"icon"`
-	MinTemperature  string `json:"minimum-temperature"`
-	MaxTemperature  string `json:"maximum-temperature"`
-	Clouds          string `json:"clouds"`
-	Humidity        string `json:"humidity"`
-	WindSpeed       string `json:"wind-speed"`
-	Visibility      string `json:"visibility"`
+	Name            string  `json:"name"`
+	CountryName     string  `json:"country-name"`
+	Temperature     float64 `json:"temperature"`
+	Description     string  `json:"description"`
+	WeatherIconLink string  `json:"icon"`
+	MinTemperature  float64 `json:"minimum-temperature"`
+	MaxTemperature  float64 `json:"maximum-temperature"`
+	Clouds          int     `json:"clouds"`
+	Humidity        int     `json:"humidity"`
+	WindSpeed       float64 `json:"wind-speed"`
+	Visibility      int     `json:"visibility"`
 }
 
 type WeatherError struct {

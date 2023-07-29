@@ -11,17 +11,17 @@ import (
 )
 
 type WeatherApiResponseWeatherData struct {
-	LocationName        string `njson:"name"`
-	LocationCountryName string `njson:"sys.country"`
-	Temperature         string `njson:"main.temp"`
-	Description         string `njson:"weather.0.description"`
-	WeatherIcon         string `njson:"weather.0.icon"`
-	MinTemperature      string `njson:"main.temp_min"`
-	MaxTemperature      string `njson:"main.temp_max"`
-	Clouds              string `njson:"clouds.all"`
-	Humidity            string `njson:"main.humidity"`
-	WindSpeed           string `njson:"wind.speed"`
-	Visibility          string `njson:"visibility"`
+	LocationName        string  `njson:"name"`
+	LocationCountryName string  `njson:"sys.country"`
+	Temperature         float64 `njson:"main.temp"`
+	Description         string  `njson:"weather.0.description"`
+	WeatherIcon         string  `njson:"weather.0.icon"`
+	MinTemperature      float64 `njson:"main.temp_min"`
+	MaxTemperature      float64 `njson:"main.temp_max"`
+	Clouds              int     `njson:"clouds.all"`
+	Humidity            int     `njson:"main.humidity"`
+	WindSpeed           float64 `njson:"wind.speed"`
+	Visibility          int     `njson:"visibility"`
 }
 
 func GetWeather(location string) WeatherApiResponseWeatherData {
