@@ -44,8 +44,7 @@ func (controller *controller) GetWeather(ctx *gin.Context) (entity.Weather, erro
 	cookie, err := ctx.Cookie("name")
 
 	if err != nil {
-		ctx.SetCookie("name", "bhargav", 20000, "/", "go-weather", true, true)
-		// ctx.SetCookie("gin_cookie", "test", 3600, "/", "localhost", true, true)
+		ctx.SetCookie("name", "bhargav", 20000, "/", ctx.Request.Host, true, true)
 	} else {
 		fmt.Println("Cookie is", cookie)
 	}
