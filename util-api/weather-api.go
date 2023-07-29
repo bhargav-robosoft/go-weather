@@ -2,6 +2,7 @@ package utilapi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -23,31 +24,31 @@ type WeatherApiResponseWeatherData struct {
 	Visibility          int     `njson:"visibility"`
 }
 
-func GetWeather(location string) (WeatherApiResponseWeatherData, error, bool, any) {
+func GetWeather(location string) (WeatherApiResponseWeatherData, error) {
 	response, err := http.Get("https://api.openweathermap.org/data/2.5/weather?&appid=e07a248e19b7bc76072304519cc9e7ff&units=metric&q=" + location)
 
 	if err != nil {
-		return WeatherApiResponseWeatherData{}, err, false, nil
+		return WeatherApiResponseWeatherData{}, err
 	}
 
 	responseData, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return WeatherApiResponseWeatherData{}, err, false, nil
+		return WeatherApiResponseWeatherData{}, err
 	}
 
 	if response.StatusCode != 200 {
-		var errorResponse any
+		var errorResponse map[string]string
 		json.Unmarshal(responseData, &errorResponse)
-		return WeatherApiResponseWeatherData{}, nil, true, errorResponse
+		return WeatherApiResponseWeatherData{}, errors.New(errorResponse["message"])
 	}
 
 	var responseObject WeatherApiResponseWeatherData
 	err = njson.Unmarshal(responseData, &responseObject)
 	if err != nil {
 		fmt.Println("error", err)
-		return WeatherApiResponseWeatherData{}, err, false, nil
+		return WeatherApiResponseWeatherData{}, err
 	}
 	fmt.Println("response", responseObject)
 
-	return responseObject, nil, false, nil
+	return responseObject, nil
 }

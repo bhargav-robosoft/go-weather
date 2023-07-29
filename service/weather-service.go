@@ -6,7 +6,7 @@ import (
 )
 
 type WeatherService interface {
-	GetWeather(string) (entity.Weather, error, bool, any)
+	GetWeather(string) (entity.Weather, error)
 }
 
 type weatherService struct {
@@ -16,13 +16,11 @@ func New() WeatherService {
 	return &weatherService{}
 }
 
-func (service *weatherService) GetWeather(location string) (entity.Weather, error, bool, any) {
-	responseData, err, isInvalidResponse, invalidResponse := utilapi.GetWeather(location)
+func (service *weatherService) GetWeather(location string) (entity.Weather, error) {
+	responseData, err := utilapi.GetWeather(location)
 
 	if err != nil {
-		return entity.Weather{}, err, false, nil
-	} else if isInvalidResponse {
-		return entity.Weather{}, nil, true, invalidResponse
+		return entity.Weather{}, err
 	} else {
 		var weatherData entity.Weather
 		weatherData = entity.Weather{
@@ -38,6 +36,6 @@ func (service *weatherService) GetWeather(location string) (entity.Weather, erro
 			WindSpeed:       responseData.WindSpeed,
 			Visibility:      responseData.Visibility,
 		}
-		return weatherData, nil, false, nil
+		return weatherData, nil
 	}
 }
