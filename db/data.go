@@ -85,8 +85,8 @@ func GetRecentsForUser(id string) ([]string, error) {
 	}
 
 	locations := []string{}
-	for i := len(decodedResponse["recents"].(bson.A)); i >= 0; i-- {
-		v := decodedResponse["favourites"].(bson.A)[i]
+	for i := len(decodedResponse["recents"].(bson.A)) - 1; i >= 0; i-- {
+		v := decodedResponse["recents"].(bson.A)[i]
 		locations = append(locations, v.(string))
 	}
 
@@ -117,7 +117,7 @@ func GetFavouritesForUser(id string) ([]string, error) {
 	}
 
 	locations := []string{}
-	for i := len(decodedResponse["favourites"].(bson.A)); i >= 0; i-- {
+	for i := len(decodedResponse["favourites"].(bson.A)) - 1; i >= 0; i-- {
 		v := decodedResponse["favourites"].(bson.A)[i]
 		locations = append(locations, v.(string))
 	}
