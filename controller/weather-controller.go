@@ -27,58 +27,34 @@ func New(service service.WeatherService) WeatherController {
 }
 
 func (controller *controller) GetWeather(ctx *gin.Context) (entity.Weather, error) {
-	params := ctx.Request.URL.Query()
-
-	if !params.Has("location") {
-		return entity.Weather{}, errors.New("No location")
-	}
-
-	location := params["location"][0]
-
-	if len(location) == 0 {
-		return entity.Weather{}, errors.New("Empty location")
-	}
-
-	data, err := controller.service.GetWeather(location)
+	weatherData, err := handleQueryLocation(ctx, controller)
 	if err != nil {
 		return entity.Weather{}, err
 	}
 
-	id, err := ctx.Cookie("id")
-
+	id, err := handleCookie(ctx, true)
 	if err != nil {
-		id = db.CreateIdForUser()
-		ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
+		return entity.Weather{}, err
 	}
 
-	err = db.AddRecentSearchForUser(id, data.Name)
+	err = db.AddRecentSearchForUser(id, weatherData.Name)
 	if err != nil {
-		if err.Error() == "Id error" {
-			id := db.CreateIdForUser()
-			ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
-			err := db.AddRecentSearchForUser(id, data.Name)
-			if err != nil {
-				return entity.Weather{}, err
-			}
-		} else {
-			return entity.Weather{}, err
-		}
-
+		return entity.Weather{}, err
 	}
 
-	isFav, err := db.IsFavourite(id, data.Name)
+	isFav, err := db.IsFavourite(id, weatherData.Name)
 
 	if err != nil {
-		return data, nil
+		return weatherData, nil
 	}
 
-	data.IsFavourite = isFav
+	weatherData.IsFavourite = isFav
 
-	return data, nil
+	return weatherData, nil
 }
 
 func (controller *controller) GetRecentsWeather(ctx *gin.Context) ([]entity.Weather, error) {
-	id, err := ctx.Cookie("id")
+	id, err := handleCookie(ctx, false)
 	if err != nil {
 		return []entity.Weather{}, nil
 	} else {
@@ -105,7 +81,7 @@ func (controller *controller) GetRecentsWeather(ctx *gin.Context) ([]entity.Weat
 }
 
 func (controller *controller) GetFavouritesWeather(ctx *gin.Context) ([]entity.Weather, error) {
-	id, err := ctx.Cookie("id")
+	id, err := handleCookie(ctx, false)
 	if err != nil {
 		return []entity.Weather{}, nil
 	} else {
@@ -128,45 +104,72 @@ func (controller *controller) GetFavouritesWeather(ctx *gin.Context) ([]entity.W
 }
 
 func (controller *controller) HandleFavourite(ctx *gin.Context) (string, error) {
+	weatherData, err := handleQueryLocation(ctx, controller)
+	if err != nil {
+		return "", err
+	}
+
+	id, err := handleCookie(ctx, true)
+	if err != nil {
+		return "", err
+	}
+
+	response, err := db.HandleFavouriteForUser(id, weatherData.Name)
+	if err != nil {
+		return "", err
+	}
+
+	return response, nil
+}
+
+// Get cookie, check it's validity and set if required
+func handleCookie(ctx *gin.Context, setId bool) (string, error) {
+	id, err := ctx.Cookie("id")
+
+	// Id Cookie is not set
+	if err != nil {
+		if setId {
+			id = db.CreateIdForUser()
+			ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
+			return id, nil
+		} else {
+			return "", errors.New("Id cookie not set")
+		}
+	}
+
+	_, err = db.CheckUserId(id)
+
+	// Id is invalid
+	if err != nil {
+		if setId {
+			id = db.CreateIdForUser()
+			ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
+		} else {
+			return "", errors.New("Invalid Id")
+		}
+	}
+
+	return id, nil
+}
+
+// Check for location in query params and send weather data
+func handleQueryLocation(ctx *gin.Context, controller *controller) (entity.Weather, error) {
 	params := ctx.Request.URL.Query()
 
 	if !params.Has("location") {
-		return "", errors.New("No location")
+		return entity.Weather{}, errors.New("No location")
 	}
 
 	location := params["location"][0]
 
 	if len(location) == 0 {
-		return "", errors.New("Empty location")
+		return entity.Weather{}, errors.New("Empty location")
 	}
 
 	data, err := controller.service.GetWeather(location)
 	if err != nil {
-		return "", err
+		return entity.Weather{}, err
 	}
 
-	cookie, err := ctx.Cookie("id")
-
-	if err != nil {
-		id := db.CreateIdForUser()
-		ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
-		cookie = id
-	}
-
-	response, err := db.HandleFavouriteForUser(cookie, data.Name)
-	if err != nil {
-		if err.Error() == "Invalid Id" || err.Error() == "Id not found" {
-			id := db.CreateIdForUser()
-			ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
-			response, err := db.HandleFavouriteForUser(id, data.Name)
-			if err != nil {
-				return "", err
-			} else {
-				return response, nil
-			}
-		} else {
-			return "", err
-		}
-	}
-	return response, nil
+	return data, nil
 }
