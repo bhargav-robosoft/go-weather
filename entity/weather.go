@@ -12,6 +12,7 @@ type Weather struct {
 	Humidity        int     `json:"humidity"`
 	WindSpeed       float64 `json:"wind-speed"`
 	Visibility      int     `json:"visibility"`
+	IsFavourite     bool    `json:"is-favourite"`
 }
 
 type WeatherError struct {

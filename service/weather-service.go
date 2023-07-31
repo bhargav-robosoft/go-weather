@@ -7,10 +7,11 @@ import (
 
 type WeatherService interface {
 	GetWeather(string) (entity.Weather, error)
+	GetRecents([]string) ([]entity.Weather, error)
+	GetFavourites([]string) ([]entity.Weather, error)
 }
 
-type weatherService struct {
-}
+type weatherService struct{}
 
 func New() WeatherService {
 	return &weatherService{}
@@ -38,4 +39,34 @@ func (service *weatherService) GetWeather(location string) (entity.Weather, erro
 		}
 		return weatherData, nil
 	}
+}
+
+func (service *weatherService) GetRecents(locations []string) ([]entity.Weather, error) {
+	var recentWeatherData = []entity.Weather{}
+
+	for _, v := range locations {
+		weatherData, err := service.GetWeather(v)
+		if err != nil {
+			continue
+		} else {
+			recentWeatherData = append(recentWeatherData, weatherData)
+		}
+
+	}
+	return recentWeatherData, nil
+}
+
+func (service *weatherService) GetFavourites(locations []string) ([]entity.Weather, error) {
+	var favouritesWeatherData = []entity.Weather{}
+
+	for _, v := range locations {
+		weatherData, err := service.GetWeather(v)
+		if err != nil {
+			continue
+		} else {
+			favouritesWeatherData = append(favouritesWeatherData, weatherData)
+		}
+
+	}
+	return favouritesWeatherData, nil
 }
