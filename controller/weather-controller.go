@@ -13,6 +13,8 @@ type WeatherController interface {
 	GetRecentsWeather(ctx *gin.Context) ([]entity.Weather, error)
 	GetFavouritesWeather(ctx *gin.Context) ([]entity.Weather, error)
 	HandleFavourite(ctx *gin.Context) (string, error)
+	ClearRecents(ctx *gin.Context) (string, error)
+	ClearFavourites(ctx *gin.Context) (string, error)
 }
 
 type controller struct {
@@ -34,7 +36,7 @@ func (controller *controller) GetWeather(ctx *gin.Context) (entity.Weather, erro
 	cookieId, _ := getIdFromCookie(ctx)
 	// Not checking for error as new Id will be created in Db operations
 
-	weatherData, id, err := controller.service.AddToRecent(location, cookieId)
+	id, weatherData, err := controller.service.AddToRecent(location, cookieId)
 	if err != nil {
 		return entity.Weather{}, err
 	}
@@ -67,23 +69,46 @@ func (controller *controller) GetFavouritesWeather(ctx *gin.Context) ([]entity.W
 }
 
 func (controller *controller) HandleFavourite(ctx *gin.Context) (string, error) {
-	// weatherData, err := handleQueryLocation(ctx, controller)
-	// if err != nil {
-	// 	return "", err
-	// }
+	location, err := handleQueryLocation(ctx, controller)
+	if err != nil {
+		return "", err
+	}
 
-	// id, err := handleCookie(ctx, true)
-	// if err != nil {
-	// 	return "", err
-	// }
+	cookieId, _ := getIdFromCookie(ctx)
+	// Not checking for error as new Id will be created in Db operations
 
-	// response, err := db.HandleFavouriteForUser(id, weatherData.Name)
-	// if err != nil {
-	// 	return "", err
-	// }
+	id, response, err := controller.service.HandleFavourite(cookieId, location)
+	if err != nil {
+		return "", err
+	}
 
-	// return response, nil
-	return "", nil
+	if cookieId != id {
+		ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
+	}
+
+	return response, nil
+}
+
+func (controller *controller) ClearRecents(ctx *gin.Context) (string, error) {
+	cookieId, err := getIdFromCookie(ctx)
+	if err != nil {
+		return "Recents are cleared", nil
+	}
+
+	err = controller.service.ClearRecents(cookieId)
+
+	return "Recents are cleared", err
+}
+
+func (controller *controller) ClearFavourites(ctx *gin.Context) (string, error) {
+	cookieId, err := getIdFromCookie(ctx)
+	if err != nil {
+		return "Favourites are cleared", nil
+	}
+
+	err = controller.service.ClearFavourites(cookieId)
+
+	return "Favourites are cleared", err
 }
 
 // Get cookie, check it's validity and set if required
@@ -97,35 +122,6 @@ func getIdFromCookie(ctx *gin.Context) (string, error) {
 
 	return id, nil
 }
-
-// func handleCookie(ctx *gin.Context, setId bool) (string, error) {
-// 	id, err := ctx.Cookie("id")
-
-// 	// Id Cookie is not set
-// 	if err != nil {
-// 		if setId {
-// 			id = db.CreateIdForUser()
-// 			ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
-// 			return id, nil
-// 		} else {
-// 			return "", errors.New("Id cookie not set")
-// 		}
-// 	}
-
-// 	_, err = db.CheckUserId(id)
-
-// 	// Id is invalid
-// 	if err != nil {
-// 		if setId {
-// 			id = db.CreateIdForUser()
-// 			ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
-// 		} else {
-// 			return "", errors.New("Invalid Id")
-// 		}
-// 	}
-
-// 	return id, nil
-// }
 
 // Check for location in query params and send weather data
 func handleQueryLocation(ctx *gin.Context, controller *controller) (string, error) {

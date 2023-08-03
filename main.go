@@ -74,14 +74,51 @@ func main() {
 	server.GET("/handle-favourite", func(ctx *gin.Context) {
 		response, err := weatherController.HandleFavourite(ctx)
 		if err != nil {
-			errorData := entity.WeatherFailureResponse{
+			errorData := entity.NormalResponse{
 				Status:  404,
 				Message: err.Error(),
-				Example: "/get-weather?location=udupi",
 			}
 			ctx.JSON(404, errorData)
 		} else {
-			ctx.JSON(200, response)
+			successData := entity.NormalResponse{
+				Status:  200,
+				Message: response,
+			}
+			ctx.JSON(200, successData)
+		}
+	})
+
+	server.GET("/clear-recents", func(ctx *gin.Context) {
+		response, err := weatherController.ClearRecents(ctx)
+		if err != nil {
+			errorData := entity.NormalResponse{
+				Status:  404,
+				Message: err.Error(),
+			}
+			ctx.JSON(404, errorData)
+		} else {
+			data := entity.NormalResponse{
+				Status:  200,
+				Message: response,
+			}
+			ctx.JSON(200, data)
+		}
+	})
+
+	server.GET("/clear-favourites", func(ctx *gin.Context) {
+		response, err := weatherController.ClearFavourites(ctx)
+		if err != nil {
+			errorData := entity.NormalResponse{
+				Status:  404,
+				Message: err.Error(),
+			}
+			ctx.JSON(404, errorData)
+		} else {
+			data := entity.NormalResponse{
+				Status:  200,
+				Message: response,
+			}
+			ctx.JSON(200, data)
 		}
 	})
 

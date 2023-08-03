@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"fmt"
 	"weather-app/db"
 	"weather-app/entity"
 	utils "weather-app/utils"
@@ -10,9 +9,12 @@ import (
 
 type WeatherService interface {
 	getWeather(location string) (entity.Weather, error)
-	AddToRecent(location string, cookieId string) (weatherData entity.Weather, id string, err error)
-	GetRecentsWeather(cookieId string) ([]entity.Weather, error)
-	GetFavouritesWeather(cookieId string) ([]entity.Weather, error)
+	AddToRecent(location string, cookieId string) (id string, weatherData entity.Weather, err error)
+	GetRecentsWeather(cookieId string) (recentsWeather []entity.Weather, err error)
+	GetFavouritesWeather(cookieId string) (favouritesWeather []entity.Weather, err error)
+	ClearRecents(cookieId string) (err error)
+	ClearFavourites(cookieId string) (err error)
+	HandleFavourite(location string, cookieId string) (id string, response string, err error)
 }
 
 type weatherService struct{}
@@ -27,13 +29,11 @@ func (service *weatherService) getWeather(location string) (entity.Weather, erro
 	}
 
 	responseData, err := utils.GetWeather(location)
-	fmt.Println("responseData", responseData, err)
 
 	if err != nil {
 		return entity.Weather{}, err
 	} else {
-		var weatherData entity.Weather
-		weatherData = entity.Weather{
+		weatherData := entity.Weather{
 			Name:            responseData.LocationName,
 			CountryName:     responseData.LocationCountryName,
 			Temperature:     responseData.Temperature,
@@ -50,32 +50,38 @@ func (service *weatherService) getWeather(location string) (entity.Weather, erro
 	}
 }
 
-func (service *weatherService) AddToRecent(location string, id string) (entity.Weather, string, error) {
+func (service *weatherService) AddToRecent(location string, id string) (string, entity.Weather, error) {
 	weatherData, err := service.getWeather(location)
-	fmt.Println("Weather1", weatherData, err)
 	if err != nil {
-		return entity.Weather{}, "", err
+		return "", entity.Weather{}, err
 	}
 
 	dbId, err := db.AddRecentSearchForUser(id, weatherData.Name)
-	fmt.Println("AddRecentSearchForUser", dbId, err)
 	if err != nil {
-		return weatherData, dbId, err
+		return dbId, weatherData, err
 	}
 
 	if dbId != id {
-		return weatherData, dbId, nil
+		return dbId, weatherData, nil
 	}
 
 	isFav, err := db.IsFavourite(dbId, weatherData.Name)
-	fmt.Println("IsFavourite", isFav, err)
 	if err != nil {
-		return weatherData, dbId, err
+		return dbId, weatherData, err
 	}
 
 	weatherData.IsFavourite = isFav
 
-	return weatherData, dbId, err
+	return dbId, weatherData, err
+}
+
+func (service *weatherService) HandleFavourite(cookieId string, location string) (id string, response string, err error) {
+	weatherData, err := service.getWeather(location)
+	if err != nil {
+		return "", "", err
+	}
+
+	return db.HandleFavouriteForUser(cookieId, weatherData.Name)
 }
 
 func (service *weatherService) GetRecentsWeather(cookieId string) ([]entity.Weather, error) {
@@ -118,4 +124,12 @@ func (service *weatherService) GetFavouritesWeather(cookieId string) ([]entity.W
 		}
 	}
 	return favouritesWeatherData, nil
+}
+
+func (service *weatherService) ClearRecents(cookieId string) (err error) {
+	return db.ClearRecents(cookieId)
+}
+
+func (service *weatherService) ClearFavourites(cookieId string) (err error) {
+	return db.ClearFavourites(cookieId)
 }
