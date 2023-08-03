@@ -19,47 +19,62 @@ func main() {
 	server.GET("/get-weather", func(ctx *gin.Context) {
 		data, err := weatherController.GetWeather(ctx)
 		if err != nil {
-			errorData := entity.WeatherError{
+			errorData := entity.WeatherFailureResponse{
 				Status:  404,
 				Message: err.Error(),
 				Example: "/get-weather?location=udupi",
 			}
 			ctx.JSON(404, errorData)
 		} else {
-			ctx.JSON(200, data)
+			successData := entity.WeatherSuccessResponse{
+				Status:  200,
+				Message: "Fetched weather data",
+				Data:    data,
+			}
+			ctx.JSON(200, successData)
 		}
 	})
 
 	server.GET("/get-recents", func(ctx *gin.Context) {
 		data, err := weatherController.GetRecentsWeather(ctx)
 		if err != nil {
-			errorData := entity.WeatherError{
+			errorData := entity.MultiWeatherResponse{
 				Status:  404,
 				Message: err.Error(),
 			}
 			ctx.JSON(404, errorData)
 		} else {
-			ctx.JSON(200, data)
+			successData := entity.MultiWeatherResponse{
+				Status:  200,
+				Message: "Fetched recents",
+				Data:    data,
+			}
+			ctx.JSON(200, successData)
 		}
 	})
 
 	server.GET("/get-favourites", func(ctx *gin.Context) {
 		data, err := weatherController.GetFavouritesWeather(ctx)
 		if err != nil {
-			errorData := entity.WeatherError{
+			errorData := entity.MultiWeatherResponse{
 				Status:  404,
 				Message: err.Error(),
 			}
 			ctx.JSON(404, errorData)
 		} else {
-			ctx.JSON(200, data)
+			successData := entity.MultiWeatherResponse{
+				Status:  200,
+				Message: "Fetched favourites",
+				Data:    data,
+			}
+			ctx.JSON(200, successData)
 		}
 	})
 
 	server.GET("/handle-favourite", func(ctx *gin.Context) {
 		response, err := weatherController.HandleFavourite(ctx)
 		if err != nil {
-			errorData := entity.WeatherError{
+			errorData := entity.WeatherFailureResponse{
 				Status:  404,
 				Message: err.Error(),
 				Example: "/get-weather?location=udupi",

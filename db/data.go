@@ -23,81 +23,111 @@ func DbSetup() (context.Context, *mongo.Client, context.CancelFunc, error) {
 	return ctx, client, cancel, nil
 }
 
-func AddRecentSearchForUser(id string, location string) error {
+func AddRecentSearchForUser(id string, location string) (dbId string, err error) {
 	ctx, client, cancel, err := DbSetup()
-
 	defer cancel()
-
 	err = client.Connect(ctx)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer client.Disconnect(ctx)
 
 	goWeatherDatabase := client.Database("go-weather")
 	usersCollection := goWeatherDatabase.Collection("users")
-	dbId, err := primitive.ObjectIDFromHex(id)
+	objId, err := primitive.ObjectIDFromHex(id)
 
-	// Id is already checked
-
-	// Remove location from Recents if present
-	_, err = usersCollection.UpdateOne(ctx, bson.M{"_id": dbId},
-		bson.D{
-			{Key: "$pull", Value: bson.D{{Key: "recents", Value: location}}},
-		})
 	if err != nil {
-		return err
+		// Create a new user and add location to recent and return nil
+		newId, err := CreateNewUserForLocation(location)
+		return newId, err
 	}
 
-	// Add location to end of Recents
-	_, err = usersCollection.UpdateOne(ctx, bson.M{"_id": dbId},
-		bson.D{
-			{Key: "$push", Value: bson.D{{Key: "recents", Value: location}}},
-		})
+	filter := bson.M{"_id": objId}
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{{Key: "recents", Value: location}}},
+	}
+	resp, err := usersCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	if resp.MatchedCount < 1 {
+		newId, err := CreateNewUserForLocation(location)
+		return newId, err
+	}
+
+	update = bson.D{
+		{Key: "$push", Value: bson.D{{Key: "recents", Value: location}}},
+	}
+	resp, err = usersCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return "", err
+	}
+
+	return id, nil
 }
 
-func GetRecentsForUser(id string) ([]string, error) {
+func CreateNewUserForLocation(location string) (string, error) {
 	ctx, client, cancel, err := DbSetup()
-
 	defer cancel()
-
 	err = client.Connect(ctx)
 	if err != nil {
-		return []string{}, err
+		return "", err
+	}
+	defer client.Disconnect(ctx)
+
+	goWeatherDatabase := client.Database("go-weather")
+	usersCollection := goWeatherDatabase.Collection("users")
+
+	userResult, err := usersCollection.InsertOne(ctx, bson.D{{Key: "recents", Value: bson.A{location}}, {Key: "favourites", Value: bson.A{}}})
+	if err != nil {
+		return "", err
+	}
+	return userResult.InsertedID.(primitive.ObjectID).Hex(), nil
+}
+
+func GetRecentsAndFavouritesForUser(id string) ([]string, []string, error) {
+	ctx, client, cancel, err := DbSetup()
+	defer cancel()
+	err = client.Connect(ctx)
+	if err != nil {
+		return []string{}, []string{}, err
 	}
 	defer client.Disconnect(ctx)
 
 	goWeatherDatabase := client.Database("go-weather")
 	usersCollection := goWeatherDatabase.Collection("users")
 	dbId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return []string{}, []string{}, nil
+	}
 
 	resp := usersCollection.FindOne(ctx, bson.M{"_id": dbId})
 
 	var decodedResponse bson.M
 	err = resp.Decode(&decodedResponse)
 	if err != nil {
-		return []string{}, err
+		return []string{}, []string{}, err
 	}
 
-	locations := []string{}
+	recentLocations := []string{}
 	for i := len(decodedResponse["recents"].(bson.A)) - 1; i >= 0; i-- {
 		v := decodedResponse["recents"].(bson.A)[i]
-		locations = append(locations, v.(string))
+		recentLocations = append(recentLocations, v.(string))
 	}
 
-	return locations, nil
+	favouriteLocations := []string{}
+	for i := len(decodedResponse["favourites"].(bson.A)) - 1; i >= 0; i-- {
+		v := decodedResponse["favourites"].(bson.A)[i]
+		favouriteLocations = append(favouriteLocations, v.(string))
+	}
+
+	return recentLocations, favouriteLocations, nil
 }
 
 func GetFavouritesForUser(id string) ([]string, error) {
 	ctx, client, cancel, err := DbSetup()
-
 	defer cancel()
-
 	err = client.Connect(ctx)
 	if err != nil {
 		return []string{}, err
@@ -107,6 +137,9 @@ func GetFavouritesForUser(id string) ([]string, error) {
 	goWeatherDatabase := client.Database("go-weather")
 	usersCollection := goWeatherDatabase.Collection("users")
 	dbId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return []string{}, nil
+	}
 
 	resp := usersCollection.FindOne(ctx, bson.M{"_id": dbId})
 
@@ -185,7 +218,7 @@ func IsFavourite(id string, location string) (bool, error) {
 	err = resp.Decode(&decodedResponse)
 
 	if err != nil {
-		return false, err
+		return false, nil
 	}
 
 	return true, nil

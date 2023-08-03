@@ -2,7 +2,6 @@ package controller
 
 import (
 	"errors"
-	"weather-app/db"
 	"weather-app/entity"
 	"weather-app/service"
 
@@ -27,149 +26,116 @@ func New(service service.WeatherService) WeatherController {
 }
 
 func (controller *controller) GetWeather(ctx *gin.Context) (entity.Weather, error) {
-	weatherData, err := handleQueryLocation(ctx, controller)
+	location, err := handleQueryLocation(ctx, controller)
 	if err != nil {
 		return entity.Weather{}, err
 	}
 
-	id, err := handleCookie(ctx, true)
+	cookieId, _ := getIdFromCookie(ctx)
+	// Not checking for error as new Id will be created in Db operations
+
+	weatherData, id, err := controller.service.AddToRecent(location, cookieId)
 	if err != nil {
 		return entity.Weather{}, err
 	}
 
-	err = db.AddRecentSearchForUser(id, weatherData.Name)
-	if err != nil {
-		return entity.Weather{}, err
+	if cookieId != id {
+		ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
 	}
-
-	isFav, err := db.IsFavourite(id, weatherData.Name)
-
-	if err != nil {
-		return weatherData, nil
-	}
-
-	weatherData.IsFavourite = isFav
 
 	return weatherData, nil
 }
 
 func (controller *controller) GetRecentsWeather(ctx *gin.Context) ([]entity.Weather, error) {
-	id, err := handleCookie(ctx, false)
+	cookieId, err := getIdFromCookie(ctx)
 	if err != nil {
 		return []entity.Weather{}, nil
-	} else {
-		recents, err := db.GetRecentsForUser(id)
-
-		if err != nil {
-			return []entity.Weather{}, err
-		} else {
-			recentWeatherData, err := controller.service.GetRecents(recents)
-			if err != nil {
-				return []entity.Weather{}, err
-			} else {
-				for i, d := range recentWeatherData {
-					isFav, err := db.IsFavourite(id, d.Name)
-					if err != nil {
-						continue
-					}
-					recentWeatherData[i].IsFavourite = isFav
-				}
-				return recentWeatherData, nil
-			}
-		}
 	}
+
+	recentsWeatherData, err := controller.service.GetRecentsWeather(cookieId)
+	return recentsWeatherData, err
 }
 
 func (controller *controller) GetFavouritesWeather(ctx *gin.Context) ([]entity.Weather, error) {
-	id, err := handleCookie(ctx, false)
+	cookieId, err := getIdFromCookie(ctx)
 	if err != nil {
 		return []entity.Weather{}, nil
-	} else {
-		favourites, err := db.GetFavouritesForUser(id)
-
-		if err != nil {
-			return []entity.Weather{}, err
-		} else {
-			favouriteWeatherData, err := controller.service.GetFavourites(favourites)
-			if err != nil {
-				return []entity.Weather{}, err
-			} else {
-				for i := range favouriteWeatherData {
-					favouriteWeatherData[i].IsFavourite = true
-				}
-				return favouriteWeatherData, nil
-			}
-		}
 	}
+
+	favouritesWeatherData, err := controller.service.GetFavouritesWeather(cookieId)
+	return favouritesWeatherData, err
 }
 
 func (controller *controller) HandleFavourite(ctx *gin.Context) (string, error) {
-	weatherData, err := handleQueryLocation(ctx, controller)
-	if err != nil {
-		return "", err
-	}
+	// weatherData, err := handleQueryLocation(ctx, controller)
+	// if err != nil {
+	// 	return "", err
+	// }
 
-	id, err := handleCookie(ctx, true)
-	if err != nil {
-		return "", err
-	}
+	// id, err := handleCookie(ctx, true)
+	// if err != nil {
+	// 	return "", err
+	// }
 
-	response, err := db.HandleFavouriteForUser(id, weatherData.Name)
-	if err != nil {
-		return "", err
-	}
+	// response, err := db.HandleFavouriteForUser(id, weatherData.Name)
+	// if err != nil {
+	// 	return "", err
+	// }
 
-	return response, nil
+	// return response, nil
+	return "", nil
 }
 
 // Get cookie, check it's validity and set if required
-func handleCookie(ctx *gin.Context, setId bool) (string, error) {
+func getIdFromCookie(ctx *gin.Context) (string, error) {
 	id, err := ctx.Cookie("id")
 
 	// Id Cookie is not set
 	if err != nil {
-		if setId {
-			id = db.CreateIdForUser()
-			ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
-			return id, nil
-		} else {
-			return "", errors.New("Id cookie not set")
-		}
-	}
-
-	_, err = db.CheckUserId(id)
-
-	// Id is invalid
-	if err != nil {
-		if setId {
-			id = db.CreateIdForUser()
-			ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
-		} else {
-			return "", errors.New("Invalid Id")
-		}
+		return "", errors.New("Id cookie not set")
 	}
 
 	return id, nil
 }
 
+// func handleCookie(ctx *gin.Context, setId bool) (string, error) {
+// 	id, err := ctx.Cookie("id")
+
+// 	// Id Cookie is not set
+// 	if err != nil {
+// 		if setId {
+// 			id = db.CreateIdForUser()
+// 			ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
+// 			return id, nil
+// 		} else {
+// 			return "", errors.New("Id cookie not set")
+// 		}
+// 	}
+
+// 	_, err = db.CheckUserId(id)
+
+// 	// Id is invalid
+// 	if err != nil {
+// 		if setId {
+// 			id = db.CreateIdForUser()
+// 			ctx.SetCookie("id", id, 3600, "/", ctx.Request.Host, true, true)
+// 		} else {
+// 			return "", errors.New("Invalid Id")
+// 		}
+// 	}
+
+// 	return id, nil
+// }
+
 // Check for location in query params and send weather data
-func handleQueryLocation(ctx *gin.Context, controller *controller) (entity.Weather, error) {
+func handleQueryLocation(ctx *gin.Context, controller *controller) (string, error) {
 	params := ctx.Request.URL.Query()
 
 	if !params.Has("location") {
-		return entity.Weather{}, errors.New("No location")
+		return "", errors.New("No location")
 	}
 
 	location := params["location"][0]
 
-	if len(location) == 0 {
-		return entity.Weather{}, errors.New("Empty location")
-	}
-
-	data, err := controller.service.GetWeather(location)
-	if err != nil {
-		return entity.Weather{}, err
-	}
-
-	return data, nil
+	return location, nil
 }

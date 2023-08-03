@@ -1,4 +1,4 @@
-package utilapi
+package utils
 
 import (
 	"encoding/json"

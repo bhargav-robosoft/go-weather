@@ -14,9 +14,3 @@ type Weather struct {
 	Visibility      int     `json:"visibility"`
 	IsFavourite     bool    `json:"is-favourite"`
 }
-
-type WeatherError struct {
-	Status  int    `json:"status"`
-	Message string `json:"message"`
-	Example string `json:"example"`
-}
